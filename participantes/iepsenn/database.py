@@ -1,36 +1,18 @@
-import sqlite3
+import os
+from typing import Any
 import jinja2
-
-
-def execute_ddl_scripts():
-    con = create_database_connection()
-
-    initial_clients = [
-        (1, 100000, 0),
-        (2, 80000, 0),
-        (3, 1000000, 0),
-        (4, 10000000, 0),
-        (5, 500000, 0),
-    ]
-
-    cur = con.cursor()
-
-    sql = read_sql_file(filename="create_clients_table.sql")
-    cur.execute(sql)
-    con.commit()
-
-    sql = read_sql_file(filename="create_transactions_table.sql")
-    cur.execute(sql)
-    con.commit()
-
-    cur.executemany("INSERT INTO clients VALUES(?, ?, ?)", initial_clients)
-    con.commit()  # Remember to commit the transaction after executing INSERT.
-
-    con.close()
+from sqlalchemy import create_engine, text
 
 
 def create_database_connection():
-    return sqlite3.connect("local.db", check_same_thread=False)
+    db_name = os.environ.get("POSTGRES_DB", "rinha")
+    db_user = os.environ.get("POSTGRES_USER", "iepsenn")
+    db_pass = os.environ.get("POSTGRES_PASSWORD", "senhasupersegura")
+    db_host = os.environ.get("POSTGRES_HOST", "database")
+    db_port = os.environ.get("POSTGRES_PORT", "5432")
+
+    db_string = 'postgresql://{}:{}@{}:{}/{}'.format(db_user, db_pass, db_host, db_port, db_name)
+    return create_engine(db_string)
 
 
 def read_sql_file(filename: str, params: dict = None):
@@ -43,3 +25,12 @@ def read_sql_file(filename: str, params: dict = None):
     env = jinja2.Environment()
     template = env.from_string(sql)
     return template.render(**params)
+
+
+def execute_query(db_conn: Any, query: str, has_output: bool = True):
+    with db_conn.connect() as conn:
+        if has_output:
+            return conn.execute(text(query)).all()
+        else:
+            conn.execute(text(query))
+            conn.commit()

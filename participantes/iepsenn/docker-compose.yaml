@@ -1,0 +1,48 @@
+version: "3"
+
+services:
+  proxy:
+    container_name: proxy
+    image: haproxy:lts-alpine3.19
+    ports:
+      - "9999:9999"
+    volumes:
+      - ./haproxy:/usr/local/etc/haproxy
+  database:
+    container_name: database
+    image: postgres:bullseye
+    restart: always
+    shm_size: 128mb
+    environment:
+      POSTGRES_DB: rinha
+      POSTGRES_USER: iepsenn
+      POSTGRES_PASSWORD: senhasupersegura
+    ports:
+      - 5432:5432
+    volumes:
+      # - ./dbdata:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+  app1:
+    container_name: app_instance_1
+    build: .
+    ports:
+      - 8081:8081
+    environment:
+      - APP_PORT=8081
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.2"
+    #       memory: "10MB"
+  app2:
+    container_name: app_instance_2
+    build: .
+    ports:
+      - 8082:8082
+    environment:
+      - APP_PORT=8082
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.2"
+    #       memory: "10MB"
